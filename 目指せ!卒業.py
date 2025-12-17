@@ -415,7 +415,7 @@ class Shield(pg.sprite.Sprite):
 class Bomb_Weapon(pg.sprite.Sprite):
     """
     ボム武器に関するクラス
-    爆弾を設置する
+    爆弾を設置する。これ自体に攻撃性は持たせない
     """
     def __init__(self, bird: "Bird"):
         """
@@ -424,25 +424,28 @@ class Bomb_Weapon(pg.sprite.Sprite):
         """
         super().__init__()
         
+        #画像設定
         self.image = pg.image.load("fig/bomb.png")
         self.image = pg.transform.scale(self.image, (100, 100))
-
+        #Rect取得
         self.rect = self.image.get_rect()
         self.rect.center = bird.rect.center
 
-        self.lv = 1
-        self.atk = 5
-        
-        self.cnt = 100
+        #ステータス設定
+        self.lv = 1 #レベル
+        self.atk = 5 #攻撃力
+        self.cnt = 100 #表示時間
     
     def update(self, screen: pg.Surface):
         """
         描画処理
+        引数；表示用Surface
         カウンタが0になるまで表示する
         """
         self.cnt -= 1
-        screen.blit(self.image, self.rect)
+        screen.blit(self.image, self.rect) #自己描画
         
+        #カウンタが0になったら削除
         if self.cnt == 0:
             self.kill()
 
@@ -452,31 +455,43 @@ class Laser_Weapon(pg.sprite.Sprite):
     レーザーを発射する
     """
     def __init__(self, bird: "Bird"):
+        """
+        初期化処理
+        引数：Birdインスタンス
+        """
         super().__init__()
         
-        self.vx, self.vy = bird.dire
-        angle = math.degrees(math.atan2(-self.vy, self.vx))
+        #角度設定
+        self.vx, self.vy = bird.dire #鳥の角度を取得
+        angle = math.degrees(math.atan2(-self.vy, self.vx)) #レーザーの角度の設定
 
+        #画像設定
         self.image = pg.transform.rotozoom(pg.image.load(f"fig/laser.png"), angle, 1.0)
         self.image = pg.transform.scale(self.image, (200, 200))
 
+        #移動設定
         self.vx = math.cos(math.radians(angle))
         self.vy = -math.sin(math.radians(angle))
 
-        self.rect = self.image.get_rect()
+        self.rect = self.image.get_rect() #Rect取得
+        #中央座標の設置
         self.rect.centery = bird.rect.centery + bird.rect.height * self.vy
         self.rect.centerx = bird.rect.centerx + bird.rect.width * self.vx
-        self.speed = 10
 
-        self.lv = 1
-        self.atk = 1
+        #ステータス設定
+        self.lv = 1 #レベル
+        self.atk = 1 #攻撃力
+        self.speed = 10 #レーザーの速さ
     
     def update(self):
         """
         描画処理
         画面外に行ったらオブジェクト削除
         """
-        self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
+        #移動
+        self.rect.move_ip(self.speed*self.vx, self.speed*self.vy) #移動処理
+
+        #画面外への移動で削除
         if check_bound(self.rect) != (True, True):
             self.kill()
 
@@ -486,115 +501,173 @@ class Missile_Weapon(pg.sprite.Sprite):
     一番近い敵をターゲットに追尾し続ける
     """
     def __init__(self, bird: "Bird", emys: pg.sprite.Group):
+        """
+        初期化処理
+        引数：Birdインスタンス, Enemyオブジェクトを格納するsprite.Group
+        """
         super().__init__()
         
+        #ターゲット設定
         self.target = None
-        min_dist = float("inf")
-        
+        min_dist = float("inf") #最小を格納する変数(初期値：無限)
+        #鳥との距離が一番小さい敵をターゲットにする
         for emy in emys:
-            dx = emy.rect.centerx - bird.rect.centerx
-            dy = emy.rect.centery - bird.rect.centery
+            dx = emy.rect.centerx - bird.rect.centerx #距離との差x
+            dy = emy.rect.centery - bird.rect.centery #距離との差y
             
-            dist = math.sqrt(dx**2 + dy**2)
+            dist = math.sqrt(dx**2 + dy**2) #鳥と敵の直線距離
             
+            #最小の上書き
             if dist < min_dist:
                 min_dist = dist
                 self.target = emy
-        
+        #敵がいなければこのオブジェクトを削除
         if self.target is None:
             self.kill()
             return
         else:
+            #敵から鳥の中心までのx, y成分
             self.vx = self.target.rect.centerx - bird.rect.centerx
             self.vy = self.target.rect.centery - bird.rect.centery
 
+        #画像設定
         self.base_image = pg.image.load("fig/missile.png")
         self.base_image = pg.transform.scale(self.base_image, (100, 50))
-
+        
         self.image = self.base_image
-        self.rect = self.image.get_rect()
-        self.rect.center = bird.rect.center
+        self.rect = self.image.get_rect() #Rect取得
+        self.rect.center = bird.rect.center #Rectの中央を鳥のRectの中央に合わせる
 
-        self.spd = 20
-        self.lv = 1
-        self.atk = 10
+        #ステータス設定
+        self.lv = 1 #レベル
+        self.atk = 10 #攻撃力
+        self.spd = 20 #速度        
     
     def update(self):
+        """
+        描画処理
+        ターゲットにぶつかるまで、常にターゲットした敵の方向に向いて移動する。
+        """
+        #ターゲットが消失したなら削除
         if not (self.target and self.target.alive()):
             self.kill()
             return
         
+        #敵の中心とミサイル中心のx,y成分
         dx = self.target.rect.centerx - self.rect.centerx
         dy = self.target.rect.centery - self.rect.centery
+        #直線距離の算出
         norm = math.sqrt(dx*dx + dy*dy)
         if norm == 0:
             return
-            
+        
+        #正規化処理(vx + vy = 1)
         self.vx = dx / norm
         self.vy = dy / norm
-        
+
+         #逆正接の算出
         angle = math.degrees(math.atan2(-self.vy, self.vx))
-        center = self.rect.center
+
+        center = self.rect.center #中央の保持
+        #画像の角度変更
         self.image = pg.transform.rotozoom(self.base_image, angle, 1.0)
         self.rect = self.image.get_rect(center=center)
 
+        #移動
         self.rect.move_ip(self.spd * self.vx, self.spd * self.vy)
 
 class Gun_Weapon(pg.sprite.Sprite):
+    """
+    連続弾武器に関するクラス
+    連続的に弾を射出する
+    """
     def __init__(self, bird: "Bird", space: int):
+        """
+        初期化処理
+        引数：Birdインスタンス, 鳥中心からのずらし整数量
+        """
         super().__init__()
-        
-        self.vx, self.vy = bird.dire
-        angle = math.degrees(math.atan2(-self.vy, self.vx))
 
+        #角度設定
+        self.vx, self.vy = bird.dire #鳥の角度取得
+        angle = math.degrees(math.atan2(-self.vy, self.vx)) #弾の角度設定
+
+        #画像設定
         self.image = pg.transform.rotozoom(pg.image.load(f"fig/bullet.png"), angle, 1.0)
         self.image = pg.transform.scale(self.image, (20, 20))
 
+        #移動設定
         self.vx = math.cos(math.radians(angle))
         self.vy = -math.sin(math.radians(angle))
 
-        self.rect = self.image.get_rect()
+        self.rect = self.image.get_rect() #Rect取得
+        #中心座標の設定
         self.rect.centery = bird.rect.centery + bird.rect.height * self.vy + space
         self.rect.centerx = bird.rect.centerx + bird.rect.width * self.vx + space
-        self.speed = 10
+
+        #ステータス設定
+        self.lv = 1 #レベル
+        self.atk = 1 #攻撃力
+        self.speed = 10 #弾速
     
     def update(self):
+        """
+        描画処理
+        画面外に行ったらオブジェクト削除
+        """
+        #移動
         self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
+
+        #画面外への移動で削除
         if check_bound(self.rect) != (True, True):
             self.kill()
             
 class Sword_Wepon(pg.sprite.Sprite):
+    """
+    円の軌道で周回する武器に関するクラス
+    """
     def __init__(self, bird: "Bird"):
+        """
+        初期化処理
+        引数：Birdインスタンス
+        """
         super().__init__()
         
-        self.target = bird
-        self.radius = 100 #半径
-        self.spd = 0.07
-        self.angle = 0.0
-                
+        self.bird = bird
+        self.angle = 0.0 #初期化角度
+        
+        #画像設定
         self.base_image = pg.image.load("fig/sword.png")
         self.base_image = pg.transform.scale(self.base_image, (100, 100))
-
-        self.image = self.base_image
-        self.rect = self.image.get_rect()
         
-        self.lv = 1
-        self.atk = 5
+        self.image = self.base_image
+        self.rect = self.image.get_rect() #Rect取得
+        
+        #ステータス設定
+        self.lv = 1 #レベル
+        self.atk = 5 #攻撃力
+        self.radius = 100 #周回半径
+        self.spd = 0.07 #周回速度
         
     def update(self):
-        self.angle += self.spd
+        """
+        描画処理
+        円の軌道でbirdのまわりを周回する
+        """
+        self.angle += self.spd #角度の変化
+        cx, cy  = self.bird.rect.center #鳥の中心を取得
         
-        cx, cy  = self.target.rect.center
-        
+        #中心座標の決定
         x = cx + self.radius * math.cos(self.angle)
         y = cy + self.radius * math.sin(self.angle)
-
         center = (x, y)
         
+        #画像角度の決定
         dx = x - cx
         dy = y - cy
         image_angle = -math.degrees(math.atan2(dy, dx))
 
+        #画像角度の変更
         self.image = pg.transform.rotate(self.base_image, image_angle)
         self.rect = self.image.get_rect(center=center)          
         
@@ -608,12 +681,12 @@ def main():
     score = Score()
 
     bird = Bird(3, (900, 400))
-    bb_wep = pg.sprite.Group()
-    bb_effect = pg.sprite.Group()
-    lsr_wep = pg.sprite.Group()
-    mssl_wep = pg.sprite.Group()
-    gun_wep = pg.sprite.Group()
-    swrd_wep = pg.sprite.Group()
+    bb_wep = pg.sprite.Group() #ボムの武器のグループ
+    bb_effect = pg.sprite.Group() #ボム演出後の攻撃用エフェクトグループ
+    lsr_wep = pg.sprite.Group() #レーザー武器のグループ
+    mssl_wep = pg.sprite.Group() #ミサイル武器のグループ
+    gun_wep = pg.sprite.Group() #連続弾武器のグループ
+    swrd_wep = pg.sprite.Group() #周回軌道武器のグループ
     bombs = pg.sprite.Group()
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
@@ -623,10 +696,11 @@ def main():
     emps = pg.sprite.Group()
 
     tmr = 0
-    laser_power = 100
-    sword_recast = 500
-    #剣武器追加
-    swrd_wep.add(Sword_Wepon(bird))
+    laser_power = 100 #レーザー射出管理用カウンタ
+    sword_recast = 500 #剣の持続カウンタ
+
+    swrd_wep.add(Sword_Wepon(bird)) #剣武器追加
+
     clock = pg.time.Clock()
     while True:
         key_lst = pg.key.get_pressed()
@@ -675,43 +749,53 @@ def main():
         #武器処理
         #爆弾クールダウン
         if tmr % 150 == 0 and tmr != 0:
-            bb_wep.add(Bomb_Weapon(bird))
+            bb_wep.add(Bomb_Weapon(bird)) #演出用ボムを追加
         for bb in bb_wep:
-            if bb.cnt == 10:
-                bb_effect.add(Explosion(bb, 100)) #爆破
+            if bb.cnt == 1:
+                bb_effect.add(Explosion(bb, 100)) #攻撃判定エフェクトの追加
+
         #レーザークールダウン
         if tmr % 9 == 0:
             laser_power -= 1
             
-            if laser_power > 80:
+            if laser_power > 80: #射出上限
                 lsr_wep.add(Laser_Weapon(bird)) #レーザー武器追加
             elif laser_power == 0:
-                laser_power = 100
+                laser_power = 100 #初期化
+                
         #ミサイルクールダウン
         if tmr % 100 == 0:
             mssl_wep.add(Missile_Weapon(bird, emys)) #ミサイル武器追加
+
         #連続弾クールダウン
         if tmr % 5 == 0:
             #連続弾追加
             gun_wep.add(Gun_Weapon(bird, 10))
             gun_wep.add(Gun_Weapon(bird, -10))
+
         #剣クールダウン
         sword_recast -= 1
         if sword_recast == 0:
-            swrd_wep.empty()
-        elif sword_recast == -500:
+            swrd_wep.empty() #すべての周回軌道武器を削除
+        elif sword_recast == -500: #クールタイム
+            #初期化
             sword_recast = 500
-            swrd_wep.add(Sword_Wepon(bird))
+            swrd_wep.add(Sword_Wepon(bird)) #周回軌道武器の追加
 
-        #武器当たり判定クラス
+        #敵×武器衝突イベント
+        #ボム攻撃用エフェクトとの衝突
         for emy in pg.sprite.groupcollide(emys, bb_effect, True, False).keys():
             exps.add(Explosion(emy, 100))
+        #レーザー武器との衝突
         for emy in pg.sprite.groupcollide(emys, lsr_wep, True, False).keys():
             exps.add(Explosion(emy, 100))
+        #追尾ミサイルとの衝突
         for emy in pg.sprite.groupcollide(emys, mssl_wep, True, True).keys():
             exps.add(Explosion(emy, 100))
+        #連続弾との衝突
         for emy in pg.sprite.groupcollide(emys, gun_wep, True, True).keys():
             exps.add(Explosion(emy, 100))
+        #周回軌道武器との衝突
         for emy in pg.sprite.groupcollide(emys, swrd_wep, True, False).keys():
             exps.add(Explosion(emy, 100))
                                 
