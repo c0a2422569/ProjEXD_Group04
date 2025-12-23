@@ -149,7 +149,7 @@ class Bird(pg.sprite.Sprite):
         self.set_item(1, str(item), attack, level)
 
         if os.path.exists("sound/damage.mp3"):
-            self.dmg_sound = pg.mixer.Sound("fig/damage.mp3") #ダメージエフェクト(elseはエラー回避用)
+            self.dmg_sound = pg.mixer.Sound("sound/damage.mp3") #ダメージエフェクト(elseはエラー回避用)
         else:
             self.dmg_sound = None
 
@@ -814,8 +814,8 @@ def main():
     global width, height #画面幅、画面高さのグローバル変数を呼び出す
     
     pg.display.set_caption("真！こうかとん無双")
-    screen = pg.display.set_mode((width, height))
-    width, height = screen.get_width(), screen.get_height()
+    screen = pg.display.set_mode((width, height), pg.FULLSCREEN)
+    width, height = screen.get_size()
     
     #背景写真
     bg_img = pg.image.load(f"fig/back_ground.png")
@@ -868,7 +868,7 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
-            if event.type == pg.K_ESCAPE:
+            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                 return 0
 
             # スタート画面用のイベント処理
